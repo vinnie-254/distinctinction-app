@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distinction | AI 3D Study Workspace</title>
+  <link rel="preconnect" href="https://googleapis.com">
+  <link href="https://googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <!-- Local Three.js for Interactive 3D Diagrams -->
+  <script src="/three/build/three.min.js"></script>
+  <script src="/three/examples/js/controls/OrbitControls.js"></script>
+  <!-- Paystack Checkout -->
+  <script src="https://paystack.co"></script>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <header class="glass-header">
+    <div class="brand">
+      <div class="logo-icon">✦</div>
+      <h1>Distinction</h1>
+      <span id="plan-badge" class="badge">Free Plan</span>
+    </div>
+    <div class="header-actions">
+      <button id="login-btn" class="btn-secondary">Sign In</button>
+      <button id="upgrade-btn" class="btn-gold">⚡ Upgrade to Pro</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Top Grid: Upload & Focus Timer -->
+    <div class="top-grid">
+      <section class="glass-card upload-card">
+        <h2>📄 Upload Study Material</h2>
+        <p class="subtitle">Upload lecture notes or textbooks (PDF/TXT) to generate 3D models, comprehensive notes & 20 exam questions.</p>
+        <div class="upload-controls">
+          <input type="file" id="doc-upload" accept=".pdf,.txt" class="file-input">
+          <button id="process-btn" class="btn-primary">✨ Generate Study Pack</button>
+        </div>
+        <p id="status-msg" class="status-text"></p>
+      </section>
+
+      <section class="glass-card timer-card">
+        <h2>⏱️ Deep Focus Timer</h2>
+        <div id="timer-display" class="timer-digits">25:00</div>
+        <div class="timer-buttons">
+          <button id="start-timer" class="btn-primary">Start</button>
+          <button id="reset-timer" class="btn-secondary">Reset</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Workspace Section -->
+    <section class="glass-card workspace-card">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('summary', this)">📝 Detailed Summary</button>
+        <button class="tab-btn" onclick="showTab('diagrams', this)">🧊 3D Diagram & Pictorials</button>
+        <button class="tab-btn" onclick="showTab('flashcards', this)">🗂️ Flashcards (10)</button>
+        <button class="tab-btn" onclick="showTab('questions', this)">🎯 Exam Quiz (20)</button>
+        <button class="tab-btn" onclick="showTab('qbank', this)">🔒 Question Bank</button>
+      </div>
+
+      <!-- Tab 1: Detailed Point-Form Summary -->
+      <div id="summary" class="tab-content">
+        <div class="empty-state">Upload a document above to generate a comprehensive, point-by-point summary covering every topic.</div>
+      </div>
+
+      <!-- Tab 2: Interactive 3D Diagram & Pictorial Cards -->
+      <div id="diagrams" class="tab-content hidden">
+        <div id="diagram-header">
+          <h3 id="diagram-title">Interactive 3D Concept Model</h3>
+          <p id="diagram-desc" class="subtitle">Drag with your mouse to rotate in 3D • Scroll to zoom • Click or inspect nodes below.</p>
+        </div>
+        <div id="three-canvas-container"></div>
+        <div id="pictorial-cards" class="pictorial-grid"></div>
+      </div>
+
+      <!-- Tab 3: Flashcards -->
+      <div id="flashcards" class="tab-content hidden">
+        <div id="flashcard-container" class="flashcard-grid"></div>
+      </div>
+
+      <!-- Tab 4: 20 Practice Questions -->
+      <div id="questions" class="tab-content hidden">
+        <div id="quiz-container"></div>
+      </div>
+
+      <!-- Tab 5: Pro Question Bank -->
+      <div id="qbank" class="tab-content hidden">
+        <div id="qbank-locked" class="locked-box">
+          <div class="lock-icon">👑</div>
+          <h3>Unlock Distinction Pro Question Banks</h3>
+          <p>Automatically archive all 20-question exam sets from every uploaded PDF and build custom revision banks.</p>
+          <button onclick="triggerUpgrade()" class="btn-gold">Unlock Pro Access</button>
+        </div>
+        <div id="qbank-unlocked" class="hidden">
+          <h3>📚 Your Saved Question Banks</h3>
+          <ul id="saved-banks-list" class="bank-list"></ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
