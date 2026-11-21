@@ -170,14 +170,13 @@ function renderTextbookDiagram(diagram) {
   const badgeBg = isLightTextbookTheme ? '#f1f5f9' : '#1e293b';
 
   const svgNS = 'http://w3.org';
+    const svgNS = 'http://w3.org';
   const svg = document.createElementNS(svgNS, 'svg');
   svg.setAttribute('id', 'textbook-svg-diagram');
   svg.setAttribute('viewBox', '0 0 1000 580');
   svg.setAttribute('width', '100%');
   svg.setAttribute('height', '580');
-  svg.style.minWidth = '720px';
-  svg.style.display = 'block';
-  svg.style.background = bg;
+  svg.setAttribute('style', 'min-width:720px; display:block; background:' + bg + ';');
 
   const defs = document.createElementNS(svgNS, 'defs');
   defs.innerHTML =
