@@ -280,4 +280,4 @@ res.status(500).json({ verified: false });
 }
 });
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(Distinction Pro running at http://localhost:${PORT}));
+app.listen(PORT, () => console.log('Distinction Pro running on port ' + PORT));
