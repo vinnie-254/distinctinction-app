@@ -268,3 +268,16 @@ app.post('/api/verify-payment', async (req, res) => {
 
     if (data.status && data.data.status === 'success') {
       if (userId) {
+
+await supabaseAdmin.from('profiles').upsert({ id: userId, is_pro: true });
+}
+res.json({ verified: true });
+} else {
+res.json({ verified: false });
+}
+} catch (error) {
+res.status(500).json({ verified: false });
+}
+});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(Distinction Pro running at http://localhost:${PORT}));
