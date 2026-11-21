@@ -3,6 +3,31 @@ let isProUser = false;
 let latestTextbookDiagram = null;
 let isLightTextbookTheme = true;
 
+// --- Automatic Tab Switcher (Works Immediately on Page Load) ---
+function activateTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(panel => {
+    panel.classList.add('hidden');
+  });
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabId);
+  });
+
+  const target = document.getElementById(tabId);
+  if (target) target.classList.remove('hidden');
+
+  if (tabId === 'diagrams' && latestTextbookDiagram) {
+    renderTextbookDiagram(latestTextbookDiagram);
+  }
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+});
+
+window.showTab = function(id) {
+  activateTab(id);
+};
+
 function unlockProUI() {
   isProUser = true;
   const badge = document.getElementById('plan-badge');
@@ -44,7 +69,7 @@ document.getElementById('process-btn').addEventListener('click', async () => {
 
     renderStudyMaterials(data);
     statusMsg.style.color = '#34d399';
-    statusMsg.textContent = '✅ "' + (data.topicTitle || selectedFile.name) + '" ready!';
+    statusMsg.textContent = '✅ "' + (data.topicTitle || selectedFile.name) + '" ready! Click the tabs below to explore.';
 
     if (isProUser && currentUser) {
       const saveRes = await fetch('/api/qbank', {
@@ -95,8 +120,8 @@ function renderStudyMaterials(data) {
       card.style.cursor = 'pointer';
       card.innerHTML =
         '<h4><span class="color-dot" style="background:' + (node.color || '#2563eb') + '"></span>' + (idx + 1) + '. ' + node.label + '</h4>' +
-        '<div style="color:#38bdf8; font-size:0.78rem; font-weight:700; margin-top:2px;">' + (node.sublabel || '') + '</div>' +
-        '<p style="color:#cbd5e1; font-size:0.86rem; margin-top:6px; line-height:1.5;">' + node.detail + '</p>';
+        '<div style="color:#fcd34d; font-size:0.78rem; font-weight:700; margin-top:2px;">' + (node.sublabel || '') + '</div>' +
+        '<p style="color:#f1f5f9; font-size:0.86rem; margin-top:6px; line-height:1.5;">' + node.detail + '</p>';
       card.onclick = () => highlightTextbookNode(idx);
       pictorialGrid.appendChild(card);
     });
@@ -215,24 +240,21 @@ function renderTextbookDiagram(diagram) {
     const endX = dst.x - ux * 98;
     const endY = dst.y - uy * 44;
 
-    const midX = (startX + endX) / 2 - uy * 18;
-    const midY = (startY + endY) / 2 + ux * 18;
-
-    const path = document.createElementNS(svgNS, 'path');
-    path.setAttribute('d', 'M ' + startX + ' ' + startY + ' Q ' + midX + ' ' + midY + ' ' + endX + ' ' + endY);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', arrowColor);
-    path.setAttribute('stroke-width', '2.4');
-    if (arrow.dashed) path.setAttribute('stroke-dasharray', '6,5');
-    path.setAttribute('marker-end', 'url(#tb-arrow)');
-    svg.appendChild(path);
-
-    if (arrow.actionLabel) {
-      const labelText = arrow.actionLabel.slice(0, 22);
-      const pillW = Math.max(76, labelText.length * 7.2 + 16);
-
-      const pill = document.createElementNS(svgNS, 'rect');
-
+Use code with caution.
+const midX = (startX + endX) / 2 - uy * 18;
+const midY = (startY + endY) / 2 + ux * 18;
+const path = document.createElementNS(svgNS, 'path');
+path.setAttribute('d', 'M ' + startX + ' ' + startY + ' Q ' + midX + ' ' + midY + ' ' + endX + ' ' + endY);
+path.setAttribute('fill', 'none');
+path.setAttribute('stroke', arrowColor);
+path.setAttribute('stroke-width', '2.4');
+if (arrow.dashed) path.setAttribute('stroke-dasharray', '6,5');
+path.setAttribute('marker-end', 'url(#tb-arrow)');
+svg.appendChild(path);
+if (arrow.actionLabel) {
+const labelText = arrow.actionLabel.slice(0, 22);
+const pillW = Math.max(76, labelText.length * 7.2 + 16);
+const pill = document.createElementNS(svgNS, 'rect');
 pill.setAttribute('x', midX - pillW / 2);
 pill.setAttribute('y', midY - 11);
 pill.setAttribute('width', pillW);
@@ -336,8 +358,8 @@ if (!latestTextbookDiagram) return;
 const node = latestTextbookDiagram.nodes.at(idx);
 if (!node) return;
 document.querySelectorAll('.pictorial-card').forEach((card, i) => {
-card.style.borderColor = i === idx ? (node.color || '#2563eb') : 'rgba(255,255,255,0.1)';
-card.style.background = i === idx ? 'rgba(56, 189, 248, 0.14)' : 'rgba(255,255,255,0.04)';
+card.style.borderColor = i === idx ? (node.color || '#2563eb') : 'rgba(244, 114, 148, 0.22)';
+card.style.background = i === idx ? 'rgba(128, 0, 32, 0.32)' : 'rgba(255, 241, 244, 0.045)';
 if (i === idx) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 });
 latestTextbookDiagram.nodes.forEach((n, i) => {
@@ -445,7 +467,8 @@ window.history.replaceState({}, document.title, '/');
 }
 });
 document.getElementById('upgrade-btn').addEventListener('click', triggerUpgrade);
-// --- 5. Focus Timer & Tabs ---
+document.getElementById('qbank-upgrade-btn').addEventListener('click', triggerUpgrade);
+// --- 5. Focus Timer ---
 let timeLeft = 25 * 60;
 let timerId = null;
 document.getElementById('start-timer').onclick = () => {
@@ -467,11 +490,4 @@ clearInterval(timerId);
 timerId = null;
 timeLeft = 25 * 60;
 document.getElementById('timer-display').textContent = '25:00';
-};
-window.showTab = function(id, btnElement) {
-document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-document.getElementById(id).classList.remove('hidden');
-if (btnElement) btnElement.classList.add('active');
-if (id === 'diagrams' && latestTextbookDiagram) renderTextbookDiagram(latestTextbookDiagram);
 };

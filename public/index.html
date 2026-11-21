@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Distinction | AI Study & Textbook Diagrams</title>
-  <meta name="theme-color" content="#6366f1">
+  <title>Distinction | AI Study Workspace</title>
+  <meta name="theme-color" content="#800020">
   <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://googleapis.com">
   <link href="https://googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <!-- Paystack Checkout -->
   <script src="https://paystack.co"></script>
 </head>
 <body>
@@ -42,7 +41,7 @@
 
       <section class="glass-card timer-card">
         <h2>⏱️ Deep Focus Timer</h2>
-        <div id="timer-display" class="timer-digits">1:30:00</div>
+        <div id="timer-display" class="timer-digits">25:00</div>
         <div class="timer-buttons">
           <button id="start-timer" class="btn-primary">Start</button>
           <button id="reset-timer" class="btn-secondary">Reset</button>
@@ -53,11 +52,11 @@
     <!-- Workspace Section -->
     <section class="glass-card workspace-card">
       <div class="tabs">
-        <button class="tab-btn active" onclick="showTab('summary', this)">📝 Detailed Summary</button>
-        <button class="tab-btn" onclick="showTab('diagrams', this)">📐 Textbook Diagrams</button>
-        <button class="tab-btn" onclick="showTab('flashcards', this)">🗂️ Flashcards (10)</button>
-        <button class="tab-btn" onclick="showTab('questions', this)">🎯 Exam Quiz (20)</button>
-        <button class="tab-btn" onclick="showTab('qbank', this)">🔒 Question Bank</button>
+        <button type="button" class="tab-btn active" data-tab="summary">📝 Detailed Summary</button>
+        <button type="button" class="tab-btn" data-tab="diagrams">📐 Textbook Diagrams</button>
+        <button type="button" class="tab-btn" data-tab="flashcards">🗂️ Flashcards (10)</button>
+        <button type="button" class="tab-btn" data-tab="questions">🎯 Exam Quiz (20)</button>
+        <button type="button" class="tab-btn" data-tab="qbank">🔒 Question Bank</button>
       </div>
 
       <!-- Tab 1: Detailed Point-Form Summary -->
@@ -65,27 +64,34 @@
         <div class="empty-state">Upload a document above to generate a comprehensive, point-by-point summary covering every topic.</div>
       </div>
 
-      <!-- Tab 2: Computerized Textbook Diagram & Callout Legend -->
+      <!-- Tab 2: Computerized Textbook Diagram & Annotations -->
       <div id="diagrams" class="tab-content hidden">
-        <div id="diagram-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+        <div id="diagram-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
           <div>
             <h3 id="diagram-title">Computerized Textbook Figure</h3>
-            <p id="diagram-desc" class="subtitle" style="margin-bottom:0;">Click any labeled part on the diagram or legend below to inspect its explanation.</p>
+            <p id="diagram-desc" class="subtitle" style="margin-bottom:0;">Upload a PDF to generate a labeled textbook schematic.</p>
           </div>
-          <button id="download-diagram-btn" class="btn-secondary" style="display:none;">⬇️ Download Diagram (PNG)</button>
+          <div style="display:flex; gap:8px;">
+            <button type="button" id="toggle-theme-btn" class="btn-secondary" style="padding:8px 14px; font-size:0.85rem;">🌙 Dark Blueprint Mode</button>
+            <button type="button" id="download-diagram-btn" class="btn-primary" style="padding:8px 14px; font-size:0.85rem;">⬇️ Save Diagram</button>
+          </div>
         </div>
-        <div id="textbook-diagram-plate"></div>
-        <div id="pictorial-cards" class="pictorial-grid" style="margin-top:20px;"></div>
+        <div id="textbook-canvas-wrapper" style="width:100%; overflow-x:auto; border-radius:14px; border:1px solid rgba(255,255,255,0.15); margin-bottom:18px;"></div>
+        <div id="pictorial-cards" class="pictorial-grid"></div>
       </div>
 
       <!-- Tab 3: Flashcards -->
       <div id="flashcards" class="tab-content hidden">
-        <div id="flashcard-container" class="flashcard-grid"></div>
+        <div id="flashcard-container" class="flashcard-grid">
+          <div class="empty-state">Upload a document above to generate 10 interactive flashcards.</div>
+        </div>
       </div>
 
       <!-- Tab 4: 20 Practice Questions -->
       <div id="questions" class="tab-content hidden">
-        <div id="quiz-container"></div>
+        <div id="quiz-container">
+          <div class="empty-state">Upload a document above to generate 20 exam-standard practice questions.</div>
+        </div>
       </div>
 
       <!-- Tab 5: Pro Question Bank -->
@@ -94,7 +100,7 @@
           <div class="lock-icon">👑</div>
           <h3>Unlock Distinction Pro Question Banks</h3>
           <p>Automatically archive all 20-question exam sets from every uploaded PDF and build custom revision banks.</p>
-          <button onclick="triggerUpgrade()" class="btn-gold">Unlock Pro Access</button>
+          <button type="button" id="qbank-upgrade-btn" class="btn-gold">Unlock Pro Access</button>
         </div>
         <div id="qbank-unlocked" class="hidden">
           <h3>📚 Your Saved Question Banks</h3>
@@ -105,10 +111,5 @@
   </main>
 
   <script src="app.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js');
-    }
-  </script>
 </body>
 </html>
