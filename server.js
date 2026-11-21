@@ -17,7 +17,7 @@ app.use('/three', express.static(__dirname + '/node_modules/three'));
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// Helper: Uses Interactions API with strict JSON schema
+// Helper: Uses Interactions API with strict JSON schema for Computerized Textbook Diagrams
 async function generateWithFallback(prompt) {
   const models = ['gemini-3.1-flash-lite', 'gemini-3.8-flash'];
   let lastError;
@@ -59,43 +59,48 @@ async function generateWithFallback(prompt) {
           required: ['question', 'answer']
         }
       },
-      diagram3D: {
+      textbookDiagram: {
         type: 'object',
         properties: {
+          figureNumber: { type: 'string' },
           title: { type: 'string' },
-          description: { type: 'string' },
+          caption: { type: 'string' },
+          layoutType: { type: 'string' },
           nodes: {
             type: 'array',
             items: {
               type: 'object',
               properties: {
+                id: { type: 'integer' },
                 label: { type: 'string' },
+                sublabel: { type: 'string' },
                 detail: { type: 'string' },
-                shape: { type: 'string' },
                 color: { type: 'string' },
                 x: { type: 'number' },
                 y: { type: 'number' },
-                z: { type: 'number' }
+                shape: { type: 'string' }
               },
-              required: ['label', 'detail', 'shape', 'color', 'x', 'y', 'z']
+              required: ['id', 'label', 'sublabel', 'detail', 'color', 'x', 'y', 'shape']
             }
           },
-          connections: {
+          arrows: {
             type: 'array',
             items: {
               type: 'object',
               properties: {
                 from: { type: 'integer' },
-                to: { type: 'integer' }
+                to: { type: 'integer' },
+                actionLabel: { type: 'string' },
+                dashed: { type: 'boolean' }
               },
-              required: ['from', 'to']
+              required: ['from', 'to', 'actionLabel', 'dashed']
             }
           }
         },
-        required: ['title', 'description', 'nodes', 'connections']
+        required: ['figureNumber', 'title', 'caption', 'layoutType', 'nodes', 'arrows']
       }
     },
-    required: ['topicTitle', 'summaryPoints', 'flashcards', 'questions', 'diagram3D']
+    required: ['topicTitle', 'summaryPoints', 'flashcards', 'questions', 'textbookDiagram']
   };
 
   for (const modelName of models) {
@@ -134,12 +139,24 @@ app.post('/api/generate', upload.single('document'), async (req, res) => {
     }
 
     const prompt = `
-      You are an expert university professor and 3D educational illustrator. Analyze the uploaded study material thoroughly and return ONLY valid JSON.
+      You are a senior textbook medical/scientific/academic illustrator. Analyze the uploaded study material thoroughly and return ONLY valid JSON.
       Requirements:
       1. "summaryPoints": Cover EVERY aspect, definition, process, and detail in the text using rich bullet points grouped by clear headings.
       2. "flashcards": Generate exactly 10 high-yield flashcards.
       3. "questions": Generate exactly 20 diverse, exam-standard practice questions with thorough answers.
-      4. "diagram3D": Create a 3D spatial diagram with 5 to 8 nodes representing the core structures or stages from the notes using shapes ("sphere", "box", "cylinder", "torus"), distinct hex colors, coordinates (x, y, z between -4 and 4), and index pairs in "connections".
+      4. "textbookDiagram": Design a crystal-clear, computerized textbook figure (like Pearson, Campbell Biology, or engineering schematics) with 5 to 8 key components:
+         - "figureNumber": e.g. "Figure 1.1"
+         - "title": Formal academic figure title
+         - "caption": Clear 1-2 sentence textbook figure legend explaining the diagram
+         - "layoutType": Choose "flowchart", "cycle", "hierarchy", or "system"
+         - "nodes": Position each node cleanly on a 1000x560 canvas (x between 140 and 860, y between 110 and 450) arranged in an organized grid, cycle, or top-down tree so NO boxes overlap (keep at least 210px horizontal or 130px vertical spacing).
+           * "id": 0, 1, 2...
+           * "label": Short anatomical/technical title (2-4 words)
+           * "sublabel": Key role or formula (2-5 words)
+           * "detail": Full textbook annotation (1-2 sentences)
+           * "color": Academic palette hex ("#2563eb", "#059669", "#d97706", "#7c3aed", "#dc2626", "#0891b2")
+           * "shape": "rect" (process/organ box), "pill" (start/end stage), "circle" (hub/atom/cell), or "diamond" (decision/checkpoint)
+         - "arrows": Directed connectors between node IDs with a concise "actionLabel" (1-3 words written along the arrow) and "dashed" (true for feedback/secondary links, false for primary flow).
 
       Study Material: ${extractedText.slice(0, 28000)}
     `;
@@ -159,7 +176,6 @@ app.post('/api/auth', async (req, res) => {
   try {
     let { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password });
 
-    // If account doesn't exist yet, create and auto-confirm it
     if (error) {
       const created = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -226,6 +242,7 @@ app.post('/api/paystack/initialize', async (req, res) => {
         email,
         amount: 500 * 100, // KES 500
         currency: 'KES',
+        channels: ['mobile_money', 'card'],
         callback_url: `${origin}/?userId=${encodeURIComponent(userId)}`,
         metadata: { userId }
       })
@@ -251,16 +268,3 @@ app.post('/api/verify-payment', async (req, res) => {
 
     if (data.status && data.data.status === 'success') {
       if (userId) {
-        await supabaseAdmin.from('profiles').upsert({ id: userId, is_pro: true });
-      }
-      res.json({ verified: true });
-    } else {
-      res.json({ verified: false });
-    }
-  } catch (error) {
-    res.status(500).json({ verified: false });
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Distinction Pro running at http://localhost:${PORT}`));

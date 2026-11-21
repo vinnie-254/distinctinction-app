@@ -1,0 +1,17 @@
+{
+  "name": "Distinction | AI 3D Study Workspace",
+  "short_name": "Distinction",
+  "description": "AI-powered 3D study diagrams, summaries & exam practice platform.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "https://flaticon.com",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 let currentUser = null;
 let isProUser = false;
-let latestDiagramData = null;
+let latestTextbookDiagram = null;
+let isLightTextbookTheme = true;
 
 function unlockProUI() {
   isProUser = true;
@@ -31,7 +32,7 @@ document.getElementById('process-btn').addEventListener('click', async () => {
 
   try {
     statusMsg.style.color = '#38bdf8';
-    statusMsg.textContent = '⏳ Analyzing entire document, building 3D diagram & generating 20 exam questions...';
+    statusMsg.textContent = '⏳ Analyzing document, drafting computerized textbook figure & 20 exam questions...';
 
     const formData = new FormData();
     formData.append('document', selectedFile);
@@ -65,7 +66,7 @@ document.getElementById('process-btn').addEventListener('click', async () => {
   }
 });
 
-// --- 2. Render Summary, 3D Diagram, Flashcards & 20 Questions ---
+// --- 2. Render Summary, Computerized Textbook Diagram, Flashcards & 20 Questions ---
 function renderStudyMaterials(data) {
   const summaryEl = document.getElementById('summary');
   summaryEl.innerHTML = `<h2 style="margin-bottom: 16px; color: #fff;">📘 ${data.topicTitle || 'Comprehensive Study Notes'}</h2>`;
@@ -79,21 +80,29 @@ function renderStudyMaterials(data) {
       </div>`;
   });
 
-  if (data.diagram3D && Array.isArray(data.diagram3D.nodes)) {
-    latestDiagramData = data.diagram3D;
-    document.getElementById('diagram-title').textContent = `🧊 3D Model: ${data.diagram3D.title || '3D Concept Model'}`;
-    document.getElementById('diagram-desc').textContent = `${data.diagram3D.description || ''} (Drag to rotate in 3D • Scroll to zoom)`;
+  if (data.textbookDiagram && Array.isArray(data.textbookDiagram.nodes)) {
+    latestTextbookDiagram = data.textbookDiagram;
+    const figLabel = data.textbookDiagram.figureNumber || 'Figure 1.1';
+    document.getElementById('diagram-title').textContent = `📐 ${figLabel}: ${data.textbookDiagram.title || 'Conceptual Schematic'}`;
+    document.getElementById('diagram-desc').textContent = data.textbookDiagram.caption || 'Click any labeled component below to highlight its textbook notes.';
 
     const pictorialGrid = document.getElementById('pictorial-cards');
     pictorialGrid.innerHTML = '';
-    data.diagram3D.nodes.forEach((node, idx) => {
-      pictorialGrid.innerHTML += `
-        <div class="pictorial-card">
-          <h4><span class="color-dot" style="background:${node.color || '#38bdf8'}"></span>${idx + 1}. ${node.label}</h4>
-          <p style="color:#94a3b8; font-size:0.85rem; margin-top:6px;">${node.detail}</p>
-        </div>`;
+    data.textbookDiagram.nodes.forEach((node, idx) => {
+      const card = document.createElement('div');
+      card.className = 'pictorial-card';
+      card.id = `node-card-${idx}`;
+      card.style.cursor = 'pointer';
+      card.innerHTML = `
+        <h4><span class="color-dot" style="background:${node.color || '#2563eb'}"></span>${idx + 1}. ${node.label}</h4>
+        <div style="color:#38bdf8; font-size:0.78rem; font-weight:700; margin-top:2px;">${node.sublabel || ''}</div>
+        <p style="color:#cbd5e1; font-size:0.86rem; margin-top:6px; line-height:1.5;">${node.detail}</p>
+      `;
+      card.onclick = () => highlightTextbookNode(idx);
+      pictorialGrid.appendChild(card);
     });
-    render3DScene(data.diagram3D);
+
+    renderTextbookDiagram(data.textbookDiagram);
   }
 
   const fcContainer = document.getElementById('flashcard-container');
@@ -123,154 +132,312 @@ function renderStudyMaterials(data) {
   });
 }
 
-// --- 3. Interactive Three.js 3D Diagram Engine ---
-function render3DScene(diagram) {
-  const container = document.getElementById('three-canvas-container');
-  container.innerHTML = '';
-  if (typeof THREE === 'undefined') return;
+// --- 3. Computerized Textbook SVG Diagram Renderer ---
+function renderTextbookDiagram(diagram) {
+  const wrapper = document.getElementById('textbook-canvas-wrapper');
+  if (!wrapper || !diagram) return;
 
-  const width = container.clientWidth || 800;
-  const height = 420;
+  const bg = isLightTextbookTheme ? '#f8fafc' : '#0b1120';
+  const gridColor = isLightTextbookTheme ? '#e2e8f0' : '#1e293b';
+  const titleColor = isLightTextbookTheme ? '#0f172a' : '#f8fafc';
+  const subTextColor = isLightTextbookTheme ? '#475569' : '#94a3b8';
+  const cardBg = isLightTextbookTheme ? '#ffffff' : '#111827';
+  const arrowColor = isLightTextbookTheme ? '#334155' : '#94a3b8';
+  const badgeBg = isLightTextbookTheme ? '#f1f5f9' : '#1e293b';
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-  camera.position.set(0, 2, 11);
+  const svgNS = 'http://w3.org';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('id', 'textbook-svg-diagram');
+  svg.setAttribute('viewBox', '0 0 1000 580');
+  svg.style.width = '100%';
+  svg.style.minWidth = '720px';
+  svg.style.height = 'auto';
+  svg.style.display = 'block';
+  svg.style.background = bg;
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setSize(width, height);
-  container.appendChild(renderer.domElement);
+  // Definitions: Arrowheads, Drop Shadow & Engineering Grid
+  const defs = document.createElementNS(svgNS, 'defs');
+  defs.innerHTML = `
+    <pattern id="tb-grid" width="25" height="25" patternUnits="userSpaceOnUse">
+      <path d="M 25 0 L 0 0 0 25" fill="none" stroke="${gridColor}" stroke-width="0.8"/>
+    </pattern>
+    <marker id="tb-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="${arrowColor}"/>
+    </marker>
+    <filter id="tb-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="${isLightTextbookTheme ? '0.10' : '0.45'}"/>
+    </filter>
+  `;
+  svg.appendChild(defs);
 
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.autoRotate = true;
-  controls.autoRotateSpeed = 1.2;
+  // Background Grid + Textbook Border Frame
+  const bgRect = document.createElementNS(svgNS, 'rect');
+  bgRect.setAttribute('width', '1000');
+  bgRect.setAttribute('height', '580');
+  bgRect.setAttribute('fill', 'url(#tb-grid)');
+  svg.appendChild(bgRect);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-  const pointLight = new THREE.PointLight(0xffffff, 1.2);
-  pointLight.position.set(10, 10, 10);
-  scene.add(pointLight);
+  const frame = document.createElementNS(svgNS, 'rect');
+  frame.setAttribute('x', '14');
+  frame.setAttribute('y', '14');
+  frame.setAttribute('width', '972');
+  frame.setAttribute('height', '552');
+  frame.setAttribute('rx', '10');
+  frame.setAttribute('fill', 'none');
+  frame.setAttribute('stroke', gridColor);
+  frame.setAttribute('stroke-width', '2');
+  svg.appendChild(frame);
 
-  const nodeMeshes = [];
-  diagram.nodes.forEach(node => {
-    let geometry;
-    if (node.shape === 'box') geometry = new THREE.BoxGeometry(1.1, 1.1, 1.1);
-    else if (node.shape === 'cylinder') geometry = new THREE.CylinderGeometry(0.6, 0.6, 1.3, 32);
-    else if (node.shape === 'torus') geometry = new THREE.TorusGeometry(0.65, 0.25, 16, 50);
-    else geometry = new THREE.SphereGeometry(0.7, 32, 32);
+  // Header Banner inside Diagram
+  const figHeader = document.createElementNS(svgNS, 'text');
+  figHeader.setAttribute('x', '34');
+  figHeader.setAttribute('y', '44');
+  figHeader.setAttribute('fill', titleColor);
+  figHeader.setAttribute('font-family', 'Plus Jakarta Sans, Arial, sans-serif');
+  figHeader.setAttribute('font-size', '17');
+  figHeader.setAttribute('font-weight', '800');
+  figHeader.textContent = `${diagram.figureNumber || 'FIGURE 1.1'} — ${(diagram.title || '').toUpperCase()}`;
+  svg.appendChild(figHeader);
 
-    const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
-      color: node.color || '#38bdf8',
-      roughness: 0.3,
-      metalness: 0.2
-    }));
-    mesh.position.set(node.x || 0, node.y || 0, node.z || 0);
-    scene.add(mesh);
-    nodeMeshes.push(mesh);
+  const nodes = Array.isArray(diagram.nodes) ? diagram.nodes : [];
+  const boxW = 196;
+  const boxH = 74;
 
-    const labelSprite = createTextSprite(node.label);
-    labelSprite.position.set(node.x || 0, (node.y || 0) + 1.1, node.z || 0);
-    scene.add(labelSprite);
-  });
+  // Draw Arrows First (so they sit cleanly behind component boxes)
+  (Array.isArray(diagram.arrows) ? diagram.arrows : []).forEach(arrow => {
+    const src = nodes.find(n => n.id === arrow.from) || nodes.at(arrow.from);
+    const dst = nodes.find(n => n.id === arrow.to) || nodes.at(arrow.to);
+    if (!src || !dst) return;
 
-  if (diagram.connections) {
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.6 });
-    diagram.connections.forEach(conn => {
-      const startNode = nodeMeshes.at(conn.from);
-      const endNode = nodeMeshes.at(conn.to);
-      if (startNode && endNode) {
-        const lineGeo = new THREE.BufferGeometry().setFromPoints([startNode.position, endNode.position]);
-        scene.add(new THREE.Line(lineGeo, lineMat));
-      }
-    });
-  }
+    const dx = dst.x - src.x;
+    const dy = dst.y - src.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const ux = dx / dist;
+    const uy = dy / dist;
 
-  function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-  }
-  animate();
+    // Trim line endpoints to stop right at box edges
+    const startX = src.x + ux * 92;
+    const startY = src.y + uy * 40;
+    const endX = dst.x - ux * 98;
+    const endY = dst.y - uy * 44;
+
+    // Slight quadratic curve so bidirectional arrows never collide
+    const midX = (startX + endX) / 2 - uy * 18;
+    const midY = (startY + endY) / 2 + ux * 18;
+
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', `M ${startX} ${startY} Q ${midX} ${midY} ${endX} ${endY}`);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', arrowColor);
+    path.setAttribute('stroke-width', '2.4');
+    if (arrow.dashed) path.setAttribute('stroke-dasharray', '6,5');
+    path.setAttribute('marker-end', 'url(#tb-arrow)');
+    svg.appendChild(path);
+
+    // Action Label Pill along the midpoint of the arrow
+    if (arrow.actionLabel) {
+
+const labelText = arrow.actionLabel.slice(0, 22);
+const pillW = Math.max(76, labelText.length * 7.2 + 16);
+const pill = document.createElementNS(svgNS, 'rect');
+pill.setAttribute('x', midX - pillW / 2);
+pill.setAttribute('y', midY - 11);
+pill.setAttribute('width', pillW);
+pill.setAttribute('height', '22');
+pill.setAttribute('rx', '11');
+pill.setAttribute('fill', badgeBg);
+pill.setAttribute('stroke', gridColor);
+pill.setAttribute('stroke-width', '1.2');
+svg.appendChild(pill);
+const txt = document.createElementNS(svgNS, 'text');
+txt.setAttribute('x', midX);
+txt.setAttribute('y', midY + 4);
+txt.setAttribute('text-anchor', 'middle');
+txt.setAttribute('fill', subTextColor);
+txt.setAttribute('font-family', 'Plus Jakarta Sans, Arial, sans-serif');
+txt.setAttribute('font-size', '11');
+txt.setAttribute('font-weight', '700');
+txt.textContent = labelText;
+svg.appendChild(txt);
 }
-
-function createTextSprite(message) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.roundRect(40, 20, 432, 80, 20);
-  ctx.fill();
-  ctx.font = 'bold 28px Plus Jakarta Sans, sans-serif';
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.fillText(message.slice(0, 26), 256, 70);
-
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas) }));
-  sprite.scale.set(3.5, 0.9, 1);
-  return sprite;
+});
+// Draw Crisp Computerized Textbook Component Boxes + Leader Number Badges
+nodes.forEach((node, idx) => {
+const accent = node.color || '#2563eb';
+const g = document.createElementNS(svgNS, 'g');
+g.style.cursor = 'pointer';
+g.onclick = () => highlightTextbookNode(idx);
+const x = Math.max(115, Math.min(885, node.x || 200));
+const y = Math.max(105, Math.min(470, node.y || 200));
+// Main Component Container
+const rect = document.createElementNS(svgNS, 'rect');
+rect.setAttribute('id', svg-node-box-${idx});
+rect.setAttribute('x', x - boxW / 2);
+rect.setAttribute('y', y - boxH / 2);
+rect.setAttribute('width', boxW);
+rect.setAttribute('height', boxH);
+rect.setAttribute('rx', node.shape === 'pill' ? '37' : '10');
+rect.setAttribute('fill', cardBg);
+rect.setAttribute('stroke', accent);
+rect.setAttribute('stroke-width', '2.5');
+rect.setAttribute('filter', 'url(#tb-shadow)');
+g.appendChild(rect);
+// Colored Top Header Strip inside Box
+const topBar = document.createElementNS(svgNS, 'rect');
+topBar.setAttribute('x', x - boxW / 2);
+topBar.setAttribute('y', y - boxH / 2);
+topBar.setAttribute('width', boxW);
+topBar.setAttribute('height', '8');
+topBar.setAttribute('rx', '4');
+topBar.setAttribute('fill', accent);
+g.appendChild(topBar);
+// Numbered Textbook Callout Circle (Top-Left Corner)
+const badgeCircle = document.createElementNS(svgNS, 'circle');
+badgeCircle.setAttribute('cx', x - boxW / 2 + 16);
+badgeCircle.setAttribute('cy', y - boxH / 2 + 25);
+badgeCircle.setAttribute('r', '11');
+badgeCircle.setAttribute('fill', accent);
+g.appendChild(badgeCircle);
+const badgeNum = document.createElementNS(svgNS, 'text');
+badgeNum.setAttribute('x', x - boxW / 2 + 16);
+badgeNum.setAttribute('y', y - boxH / 2 + 29);
+badgeNum.setAttribute('text-anchor', 'middle');
+badgeNum.setAttribute('fill', '#ffffff');
+badgeNum.setAttribute('font-family', 'Plus Jakarta Sans, Arial, sans-serif');
+badgeNum.setAttribute('font-size', '11');
+badgeNum.setAttribute('font-weight', '800');
+badgeNum.textContent = String(idx + 1);
+g.appendChild(badgeNum);
+// Primary Component Title
+const titleEl = document.createElementNS(svgNS, 'text');
+titleEl.setAttribute('x', x - boxW / 2 + 34);
+titleEl.setAttribute('y', y - boxH / 2 + 29);
+titleEl.setAttribute('fill', titleColor);
+titleEl.setAttribute('font-family', 'Plus Jakarta Sans, Arial, sans-serif');
+titleEl.setAttribute('font-size', '13.5');
+titleEl.setAttribute('font-weight', '800');
+titleEl.textContent = (node.label || '').slice(0, 21);
+g.appendChild(titleEl);
+// Secondary Textbook Sub-annotation
+const subEl = document.createElementNS(svgNS, 'text');
+subEl.setAttribute('x', x);
+subEl.setAttribute('y', y + 18);
+subEl.setAttribute('text-anchor', 'middle');
+subEl.setAttribute('fill', subTextColor);
+subEl.setAttribute('font-family', 'Plus Jakarta Sans, Arial, sans-serif');
+subEl.setAttribute('font-size', '11.5');
+subEl.setAttribute('font-weight', '600');
+subEl.textContent = (node.sublabel || '').slice(0, 28);
+g.appendChild(subEl);
+svg.appendChild(g);
+});
+// Bottom Textbook Figure Caption Bar
+const captionText = document.createElementNS(svgNS, 'text');
+captionText.setAttribute('x', '34');
+captionText.setAttribute('y', '548');
+captionText.setAttribute('fill', subTextColor);
+captionText.setAttribute('font-family', 'Plus Jakarta Sans, Arial, sans-serif');
+captionText.setAttribute('font-size', '12');
+captionText.setAttribute('font-style', 'italic');
+captionText.textContent = (diagram.caption || '').slice(0, 125);
+svg.appendChild(captionText);
+wrapper.innerHTML = '';
+wrapper.appendChild(svg);
 }
-
+function highlightTextbookNode(idx) {
+if (!latestTextbookDiagram) return;
+const node = latestTextbookDiagram.nodes.at(idx);
+if (!node) return;
+document.querySelectorAll('.pictorial-card').forEach((card, i) => {
+card.style.borderColor = i === idx ? (node.color || '#2563eb') : 'rgba(255,255,255,0.1)';
+card.style.background = i === idx ? 'rgba(56, 189, 248, 0.14)' : 'rgba(255,255,255,0.04)';
+if (i === idx) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+latestTextbookDiagram.nodes.forEach((n, i) => {
+const box = document.getElementById(svg-node-box-${i});
+if (box) box.setAttribute('stroke-width', i === idx ? '4.5' : '2.5');
+});
+}
+// Toggle Light Textbook Paper vs Dark Blueprint Mode
+document.getElementById('toggle-theme-btn').addEventListener('click', (e) => {
+isLightTextbookTheme = !isLightTextbookTheme;
+e.target.textContent = isLightTextbookTheme ? '🌙 Dark Blueprint Mode' : '☀️ Light Textbook Mode';
+if (latestTextbookDiagram) renderTextbookDiagram(latestTextbookDiagram);
+});
+// Download Crisp High-Res PNG of the Textbook Diagram
+document.getElementById('download-diagram-btn').addEventListener('click', () => {
+const svgEl = document.getElementById('textbook-svg-diagram');
+if (!svgEl) return alert('Generate a study pack first to download the diagram.');
+const svgData = new XMLSerializer().serializeToString(svgEl);
+const canvas = document.createElement('canvas');
+canvas.width = 2000;
+canvas.height = 1160;
+const ctx = canvas.getContext('2d');
+const img = new Image();
+img.onload = () => {
+ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+const link = document.createElement('a');
+link.download = ${(latestTextbookDiagram?.title || 'textbook-diagram').replace(/\s+/g, '_')}.png;
+link.href = canvas.toDataURL('image/png');
+link.click();
+};
+img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+});
 // --- 4. Student Login & Paystack M-Pesa/Card Checkout ---
 document.getElementById('login-btn').addEventListener('click', async () => {
-  const email = prompt('Enter your student email:');
-  const password = prompt('Enter a password (minimum 6 characters):');
-  if (!email || !password) return;
-
-  try {
-    const res = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    if (!res.ok || data.error) return alert(data.error || 'Login failed');
-
-    currentUser = data.user;
-    document.getElementById('login-btn').textContent = data.user.email;
-    if (data.isPro) {
-      unlockProUI();
-      renderSavedBanks(data.banks);
-    }
-    alert(`Welcome, ${data.user.email}!`);
-  } catch (err) {
-    alert('Error signing in: ' + err.message);
-  }
+const email = prompt('Enter your student email:');
+const password = prompt('Enter a password (minimum 6 characters):');
+if (!email || !password) return;
+try {
+const res = await fetch('/api/auth', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ email, password })
 });
-
-async function triggerUpgrade() {
-  if (!currentUser) return alert('Please click "Sign In" at the top right first so we can save your Pro subscription!');
-
-  if (typeof PaystackPop !== 'undefined') {
-    const handler = PaystackPop.setup({
-      key: 'pk_test_f739e28dbc09d1901d09cfc2a79ada433',
-      email: currentUser.email,
-      amount: 500 * 100, // KES 500
-      currency: 'KES',
-      callback: async function(response) {
-        await verifyAndUnlockPro(response.reference, currentUser.id);
-      }
-    });
-    handler.openIframe();
-  } else {
-    try {
-      const res = await fetch('/api/paystack/initialize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: currentUser.email, userId: currentUser.id })
-      });
-      const data = await res.json();
-      if (data.authorization_url) {
-        window.location.href = data.authorization_url;
-      } else {
-        alert(data.error || 'Could not open Paystack checkout.');
-      }
-    } catch (err) {
-      alert('Checkout error: ' + err.message);
-    }
-  }
+const data = await res.json();
+if (!res.ok || data.error) return alert(data.error || 'Login failed');
+currentUser = data.user;
+document.getElementById('login-btn').textContent = data.user.email;
+if (data.isPro) {
+unlockProUI();
+renderSavedBanks(data.banks);
 }
-
-
+alert(Welcome, ${data.user.email}!);
+} catch (err) {
+alert('Error signing in: ' + err.message);
+}
+});
+async function triggerUpgrade() {
+if (!currentUser) return alert('Please click "Sign In" at the top right first so we can save your Pro subscription!');
+if (typeof PaystackPop !== 'undefined') {
+const handler = PaystackPop.setup({
+key: 'pk_test_f739e28dbc09d1901d09cfc2a79ada433',
+email: currentUser.email,
+amount: 500 * 100, // KES 500
+currency: 'KES',
+callback: async function(response) {
+await verifyAndUnlockPro(response.reference, currentUser.id);
+}
+});
+handler.openIframe();
+} else {
+try {
+const res = await fetch('/api/paystack/initialize', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ email: currentUser.email, userId: currentUser.id })
+});
+const data = await res.json();
+if (data.authorization_url) {
+window.location.href = data.authorization_url;
+} else {
+alert(data.error || 'Could not open Paystack checkout.');
+}
+} catch (err) {
+alert('Checkout error: ' + err.message);
+}
+}
+}
 async function verifyAndUnlockPro(reference, userId) {
 const res = await fetch('/api/verify-payment', {
 method: 'POST',
@@ -283,7 +450,6 @@ unlockProUI();
 alert('🎉 Welcome to Distinction Pro! Your subscription is permanently saved.');
 }
 }
-// Auto-verify payment when redirected back from Paystack hosted checkout
 window.addEventListener('DOMContentLoaded', async () => {
 const params = new URLSearchParams(window.location.search);
 const reference = params.get('reference') || params.get('trxref');
@@ -297,33 +463,30 @@ document.getElementById('upgrade-btn').addEventListener('click', triggerUpgrade)
 // --- 5. Focus Timer & Tabs ---
 let timeLeft = 25 * 60;
 let timerId = null;
-
 document.getElementById('start-timer').onclick = () => {
-  if (timerId) return;
-  timerId = setInterval(() => {
-    if (--timeLeft <= 0) {
-      clearInterval(timerId);
-      timerId = null;
-      alert('Focus session complete!');
-      return;
-    }
-    const m = Math.floor(timeLeft / 60);
-    const s = timeLeft % 60;
-    document.getElementById('timer-display').textContent = m + ':' + (s < 10 ? '0' : '') + s;
-  }, 1000);
+if (timerId) return;
+timerId = setInterval(() => {
+if (--timeLeft <= 0) {
+clearInterval(timerId);
+timerId = null;
+alert('Focus session complete!');
+return;
+}
+const m = Math.floor(timeLeft / 60);
+const s = timeLeft % 60;
+document.getElementById('timer-display').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+}, 1000);
 };
-
 document.getElementById('reset-timer').onclick = () => {
-  clearInterval(timerId);
-  timerId = null;
-  timeLeft = 25 * 60;
-  document.getElementById('timer-display').textContent = '25:00';
+clearInterval(timerId);
+timerId = null;
+timeLeft = 25 * 60;
+document.getElementById('timer-display').textContent = '25:00';
 };
-
 window.showTab = function(id, btnElement) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-  document.getElementById(id).classList.remove('hidden');
-  if (btnElement) btnElement.classList.add('active');
-  if (id === 'diagrams' && latestDiagramData) render3DScene(latestDiagramData);
+document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+document.getElementById(id).classList.remove('hidden');
+if (btnElement) btnElement.classList.add('active');
+if (id === 'diagrams' && latestTextbookDiagram) renderTextbookDiagram(latestTextbookDiagram);
 };

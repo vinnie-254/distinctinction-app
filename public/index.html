@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Distinction | AI 3D Study Workspace</title>
+  <title>Distinction | AI Study & Textbook Diagrams</title>
+  <meta name="theme-color" content="#6366f1">
+  <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://googleapis.com">
   <link href="https://googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <!-- Local Three.js for Interactive 3D Diagrams -->
-  <script src="/three/build/three.min.js"></script>
-  <script src="/three/examples/js/controls/OrbitControls.js"></script>
   <!-- Paystack Checkout -->
   <script src="https://paystack.co"></script>
 </head>
@@ -33,7 +32,7 @@
     <div class="top-grid">
       <section class="glass-card upload-card">
         <h2>📄 Upload Study Material</h2>
-        <p class="subtitle">Upload lecture notes or textbooks (PDF/TXT) to generate 3D models, comprehensive notes & 20 exam questions.</p>
+        <p class="subtitle">Upload lecture notes or textbooks (PDF/TXT) to generate computerized textbook diagrams, summaries & 20 exam questions.</p>
         <div class="upload-controls">
           <input type="file" id="doc-upload" accept=".pdf,.txt" class="file-input">
           <button id="process-btn" class="btn-primary">✨ Generate Study Pack</button>
@@ -43,7 +42,7 @@
 
       <section class="glass-card timer-card">
         <h2>⏱️ Deep Focus Timer</h2>
-        <div id="timer-display" class="timer-digits">25:00</div>
+        <div id="timer-display" class="timer-digits">1:30:00</div>
         <div class="timer-buttons">
           <button id="start-timer" class="btn-primary">Start</button>
           <button id="reset-timer" class="btn-secondary">Reset</button>
@@ -55,7 +54,7 @@
     <section class="glass-card workspace-card">
       <div class="tabs">
         <button class="tab-btn active" onclick="showTab('summary', this)">📝 Detailed Summary</button>
-        <button class="tab-btn" onclick="showTab('diagrams', this)">🧊 3D Diagram & Pictorials</button>
+        <button class="tab-btn" onclick="showTab('diagrams', this)">📐 Textbook Diagrams</button>
         <button class="tab-btn" onclick="showTab('flashcards', this)">🗂️ Flashcards (10)</button>
         <button class="tab-btn" onclick="showTab('questions', this)">🎯 Exam Quiz (20)</button>
         <button class="tab-btn" onclick="showTab('qbank', this)">🔒 Question Bank</button>
@@ -66,14 +65,17 @@
         <div class="empty-state">Upload a document above to generate a comprehensive, point-by-point summary covering every topic.</div>
       </div>
 
-      <!-- Tab 2: Interactive 3D Diagram & Pictorial Cards -->
+      <!-- Tab 2: Computerized Textbook Diagram & Callout Legend -->
       <div id="diagrams" class="tab-content hidden">
-        <div id="diagram-header">
-          <h3 id="diagram-title">Interactive 3D Concept Model</h3>
-          <p id="diagram-desc" class="subtitle">Drag with your mouse to rotate in 3D • Scroll to zoom • Click or inspect nodes below.</p>
+        <div id="diagram-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+          <div>
+            <h3 id="diagram-title">Computerized Textbook Figure</h3>
+            <p id="diagram-desc" class="subtitle" style="margin-bottom:0;">Click any labeled part on the diagram or legend below to inspect its explanation.</p>
+          </div>
+          <button id="download-diagram-btn" class="btn-secondary" style="display:none;">⬇️ Download Diagram (PNG)</button>
         </div>
-        <div id="three-canvas-container"></div>
-        <div id="pictorial-cards" class="pictorial-grid"></div>
+        <div id="textbook-diagram-plate"></div>
+        <div id="pictorial-cards" class="pictorial-grid" style="margin-top:20px;"></div>
       </div>
 
       <!-- Tab 3: Flashcards -->
@@ -103,5 +105,10 @@
   </main>
 
   <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js');
+    }
+  </script>
 </body>
 </html>
