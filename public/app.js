@@ -240,7 +240,7 @@ function renderTextbookDiagram(diagram) {
     const endX = dst.x - ux * 98;
     const endY = dst.y - uy * 44;
 
-Use code with caution.
+
 const midX = (startX + endX) / 2 - uy * 18;
 const midY = (startY + endY) / 2 + ux * 18;
 const path = document.createElementNS(svgNS, 'path');
