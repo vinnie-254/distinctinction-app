@@ -169,7 +169,7 @@ function renderTextbookDiagram(diagram) {
   const arrowColor = isLightTextbookTheme ? '#334155' : '#94a3b8';
   const badgeBg = isLightTextbookTheme ? '#f1f5f9' : '#1e293b';
 
-  const svgNS = 'http://w3.org';
+  
     const svgNS = 'http://w3.org';
   const svg = document.createElementNS(svgNS, 'svg');
   svg.setAttribute('id', 'textbook-svg-diagram');
