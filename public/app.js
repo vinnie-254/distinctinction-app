@@ -279,7 +279,8 @@ svg.appendChild(txt);
 nodes.forEach((node, idx) => {
 const accent = node.color || '#2563eb';
 const g = document.createElementNS(svgNS, 'g');
-g.style.cursor = 'pointer';
+g.setAttribute('style', 'cursor:pointer;');
+
 g.onclick = () => highlightTextbookNode(idx);
 const x = Math.max(115, Math.min(885, node.x || 200));
 const y = Math.max(105, Math.min(470, node.y || 200));
