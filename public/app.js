@@ -173,9 +173,9 @@ function renderTextbookDiagram(diagram) {
   const svg = document.createElementNS(svgNS, 'svg');
   svg.setAttribute('id', 'textbook-svg-diagram');
   svg.setAttribute('viewBox', '0 0 1000 580');
-  svg.style.width = '100%';
+  svg.setAttribute('width', '100%');
+  svg.setAttribute('height', '580');
   svg.style.minWidth = '720px';
-  svg.style.height = 'auto';
   svg.style.display = 'block';
   svg.style.background = bg;
 
